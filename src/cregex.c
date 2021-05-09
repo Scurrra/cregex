@@ -196,7 +196,7 @@ re re_compile(const char *pattern)
                             break;
 
                         default:
-                            reg.states[j].symbols[element].type = SYMBOL; // '-' stands for range, so tou should to write '\-'
+                            reg.states[j].symbols[element].type = SYMBOL; // '-' stands for range, so you should to write '\-'
                             break;
                         }
                     }
