@@ -22,7 +22,6 @@ enum
     LAST,
     REGULAR,
     NONE,
-    //    CLASS,
     RANGE,
     SYMBOL,
     DOT,
