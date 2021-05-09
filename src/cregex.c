@@ -235,7 +235,7 @@ re re_compile(const char *pattern)
         case '{':
         {
             int n = 0;
-            int m = 0x3f3f;
+            int m;
 
             ++i;
             while (pattern[i] == ' ')
@@ -247,7 +247,20 @@ re re_compile(const char *pattern)
                 n = n * 10 + (pattern[i] - '0');
                 ++i;
             }
-            while (pattern[i] == ' ' || pattern[i] == ',')
+            while (pattern[i] == ' ')
+            {
+                ++i;
+            }
+            if (pattern[i] == ',')
+            {
+                m = 0x3f3f;
+                ++i;
+            }
+            else
+            {
+                m = n;
+            }
+            while (pattern[i] == ' ')
             {
                 ++i;
             }
@@ -260,11 +273,11 @@ re re_compile(const char *pattern)
                     ++i;
                 }
             }
-            while (pattern[i] == '}')
+            while (pattern[i] != '}')
             {
                 ++i;
             }
-            ++i;
+            //++i;
 
             reg.states[j - 1].min = n;
             reg.states[j - 1].max = m;
