@@ -1,5 +1,6 @@
 #include "cregex.h"
 #include <stdlib.h> // NULL
+#include <stdio.h>
 
 /*
 Represents a range on the alphabet
@@ -58,7 +59,7 @@ max - maximal number of symbol repetitions
 typedef struct state
 {
     unsigned char type; //  REGULAR or NONE (NONE  in case of '^' prefix)
-    symbol *symbols;
+    symbol symbols[MAX_CLASS_LENGTH + 1];
     unsigned short min; // minimal number of elements in state
     unsigned short max; // maximal number of elements in state
 } state;
@@ -81,7 +82,6 @@ re re_compile(const char *pattern)
     while (pattern[i] != '\0' && (j + 1 < MAX_PATTERN_LENGTH))
     {
         char c = pattern[i];
-
         // ranges are not allowed in []-scope
         switch (c)
         {
@@ -91,24 +91,23 @@ re re_compile(const char *pattern)
             continue; // save state
             break;
         case '.':
-            if (reg.states[j].type == NULL) // "^."
+            if (!reg.states[j].type) // "^."
             {
                 reg.states[j].type = REGULAR;
             }
 
-            reg.states[j].symbols = (symbol *)malloc(sizeof(symbol));
             reg.states[j].symbols[0].value.element = pattern[i];
             reg.states[j].symbols[0].type = DOT;
+            reg.states[j].symbols[1].type = LAST;
             break;
         case '\\':
             if (pattern[i + 1] != '\0')
             {
                 ++i;
-                if (reg.states[j].type == NULL)
+                if (!reg.states[j].type)
                 {
                     reg.states[j].type = REGULAR;
                 }
-                reg.states[j].symbols = (symbol *)malloc(sizeof(symbol));
                 reg.states[j].symbols[0].value.element = pattern[i];
 
                 switch (pattern[i])
@@ -135,22 +134,23 @@ re re_compile(const char *pattern)
                 default:
                     break;
                 }
+                reg.states[j].symbols[1].type = LAST;
             }
             break;
         case '[':
-            if (reg.states[j].type == NULL)
+            if (!reg.states[j].type)
             {
                 reg.states[j].type = REGULAR;
             }
-            reg.states[j].symbols = (symbol *)malloc(MAX_CLASS_LENGTH * sizeof(symbol));
             int element = 0; // index in reg.states[j].symbols
 
             ++i;
-            while (pattern[i] != 0 && pattern[i] != '\0')
+            while (pattern[i] != ']' && pattern[i] != '\0')
             {
                 // '.' and '^' doesn`t work`s as DOT in []-scope
                 // only ranges, elements and specials
 
+                // range
                 if (pattern[i + 1] == '-')
                 {
                     reg.states[j].symbols[element].value.rng.start = (int)pattern[i];
@@ -158,9 +158,9 @@ re re_compile(const char *pattern)
                     reg.states[j].symbols[element].type = RANGE;
 
                     i += 3;
+                    ++element;
                     continue;
                 }
-
                 // elements and specials
                 switch (pattern[i])
                 {
@@ -200,31 +200,33 @@ re re_compile(const char *pattern)
                 default:
                     reg.states[j].symbols[element].value.element = pattern[i];
                     reg.states[j].symbols[element].type = SYMBOL;
+
                     break;
                 }
 
                 ++element;
                 ++i;
             }
+            reg.states[j].symbols[element].type = LAST;
             break;
 
         default:
-            if (reg.states[j].type == NULL)
+            if (!reg.states[j].type)
             {
                 reg.states[j].type = REGULAR;
             }
-            reg.states[j].symbols = (symbol *)malloc(sizeof(symbol));
             reg.states[j].symbols[0].value.element = pattern[i];
             reg.states[j].symbols[0].type = SYMBOL;
+            reg.states[j].symbols[1].type = LAST;
+
             break;
         }
-
         ++i;
         ++j;
     }
     reg.states[j].type = LAST;
 
-    return *(re)reg;
+    return (re)&reg;
 }
 
 void re_print(re *pattern)
@@ -248,6 +250,23 @@ void re_print(re *pattern)
     while ((*pattern)->states[i].type != LAST)
     {
         printf("%d\n\ttype: %s\n", i, types[(*pattern)->states[i].type]);
-        i++;
+
+        int j = 0;
+        while ((*pattern)->states[i].symbols[j].type != LAST)
+        {
+            printf("\t%d\n\t\ttype: %s\n", j, types[(*pattern)->states[i].symbols[j].type]);
+            if ((*pattern)->states[i].symbols[j].type == SYMBOL)
+            {
+                printf("\t\tvalue: %c\n", (*pattern)->states[i].symbols[j].value.element);
+            }
+            else //if ((*pattern)->states[i].symbols[j].type == RANGE)
+            {
+                printf("\t\tstart: %c\n", (*pattern)->states[i].symbols[j].value.rng.start);
+                printf("\t\tfinish: %c\n", (*pattern)->states[i].symbols[j].value.rng.finish);
+            }
+
+            ++j;
+        }
+        ++i;
     }
 }
