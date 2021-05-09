@@ -1,6 +1,7 @@
 #include "cregex.h"
 #include <stdlib.h> // NULL
 #include <stdio.h>
+#include <ctype.h>
 
 /*
 Represents a range on the alphabet
@@ -99,6 +100,8 @@ re re_compile(const char *pattern)
             reg.states[j].symbols[0].value.element = pattern[i];
             reg.states[j].symbols[0].type = DOT;
             reg.states[j].symbols[1].type = LAST;
+            reg.states[j].min = 1;
+            reg.states[j].max = 1;
             break;
         case '\\':
             if (pattern[i + 1] != '\0')
@@ -135,6 +138,8 @@ re re_compile(const char *pattern)
                     break;
                 }
                 reg.states[j].symbols[1].type = LAST;
+                reg.states[j].min = 1;
+                reg.states[j].max = 1;
             }
             break;
         case '[':
@@ -208,7 +213,65 @@ re re_compile(const char *pattern)
                 ++i;
             }
             reg.states[j].symbols[element].type = LAST;
+            reg.states[j].min = 1;
+            reg.states[j].max = 1;
             break;
+
+            // loops
+        case '+': // 1 .. inf
+            reg.states[j - 1].min = 1;
+            reg.states[j - 1].max = 0x3f3f; // infinity
+            --j;
+            break;
+        case '*': // 0 .. inf
+            reg.states[j - 1].min = 0;
+            reg.states[j - 1].max = 0x3f3f; // infinity
+            --j;
+            break;
+        case '?': // 0 .. 1
+            reg.states[j - 1].min = 0;
+            reg.states[j - 1].max = 1;
+            --j;
+            break;
+        case '{':
+        {
+            int n = 0;
+            int m = 0x3f3f;
+
+            ++i;
+            while (pattern[i] == ' ')
+            {
+                ++i;
+            }
+            while (isdigit(pattern[i]))
+            {
+                n = n * 10 + (pattern[i] - '0');
+                ++i;
+            }
+            while (pattern[i] == ' ' || pattern[i] == ',')
+            {
+                ++i;
+            }
+            if (pattern[i] != '}')
+            {
+                m = 0;
+                while (isdigit(pattern[i]))
+                {
+                    m = m * 10 + (pattern[i] - '0');
+                    ++i;
+                }
+            }
+            while (pattern[i] == '}')
+            {
+                ++i;
+            }
+            ++i;
+
+            reg.states[j - 1].min = n;
+            reg.states[j - 1].max = m;
+            --j;
+        }
+        break;
 
         default:
             if (!reg.states[j].type)
@@ -218,7 +281,8 @@ re re_compile(const char *pattern)
             reg.states[j].symbols[0].value.element = pattern[i];
             reg.states[j].symbols[0].type = SYMBOL;
             reg.states[j].symbols[1].type = LAST;
-
+            reg.states[j].min = 1;
+            reg.states[j].max = 1;
             break;
         }
         ++i;
@@ -267,6 +331,8 @@ void re_print(re *pattern)
 
             ++j;
         }
+        printf("\tmin: %d\n", (*pattern)->states[i].min);
+        printf("\tmax: %d\n", (*pattern)->states[i].max);
         ++i;
     }
 }
