@@ -8,6 +8,7 @@ typedef struct regex *re;
 
 #define MAX_PATTERN_LENGTH 100 // maximum number of states in automata
 #define MAX_CLASS_LENGTH 10    // maximum number of elements per class (except of range)
+#define MAX_GROUP_LENGTH 10    // maximum number of elements in group ()
 
 /*
 Compiles the regular expression

@@ -19,6 +19,7 @@ typedef struct range
 
 enum
 {
+    FIRST,
     LAST,
     REGULAR,
     NONE,
@@ -74,23 +75,46 @@ typedef struct regex
 re re_compile(const char *pattern)
 {
     static regex reg;
-    reg.states = (state *)malloc(MAX_PATTERN_LENGTH * sizeof(state));
+    reg.states = (state *)malloc((MAX_PATTERN_LENGTH + 1) * sizeof(state));
+    reg.states[0].type = FIRST; // flag for beginning
 
     unsigned int i = 0; // index in pattern
-    unsigned int j = 0; // index in reg
+    unsigned int j = 1; // index in reg
+
+    int lastGroupElements[MAX_GROUP_LENGTH], lastGroupElement = 0, lastGroupInsideBracket = 0;
+    int groupLastElements[MAX_PATTERN_LENGTH], groupLastElement = 0;
+
+    for (size_t i = 0; i < MAX_GROUP_LENGTH; i++)
+    {
+        lastGroupElements[i] = -1;
+    }
+    for (size_t i = 0; i < MAX_PATTERN_LENGTH; i++)
+    {
+        groupLastElements[i] = -1;
+    }
 
     while (pattern[i] != '\0' && (j + 1 < MAX_PATTERN_LENGTH))
     {
-        char c = pattern[i];
         // ranges are not allowed in []-scope
-        switch (c)
+        switch (pattern[i])
         {
         case '^':
+            if (pattern[i + 1] == '\0' || pattern[i + 1] == '|' || pattern[i + 1] == '(')
+            {
+                return 0; // this rules are not allowed
+            }
+
             reg.states[j].type = NONE;
             ++i;
             continue; // save state
             break;
         case '.':
+            if (lastGroupElement != -1)
+            {
+                lastGroupElements[lastGroupElement] = j;
+                ++lastGroupElement;
+            }
+
             if (!reg.states[j].type) // "^."
             {
                 reg.states[j].type = REGULAR;
@@ -101,10 +125,17 @@ re re_compile(const char *pattern)
             reg.states[j].symbols[1].type = LAST;
             reg.states[j].min = 1;
             reg.states[j].max = 1;
+
             break;
         case '\\':
             if (pattern[i + 1] != '\0')
             {
+                if (lastGroupElement != -1)
+                {
+                    lastGroupElements[lastGroupElement] = j;
+                    ++lastGroupElement;
+                }
+
                 ++i;
                 if (!reg.states[j].type)
                 {
@@ -142,6 +173,12 @@ re re_compile(const char *pattern)
             }
             break;
         case '[':
+            if (lastGroupElement != -1)
+            {
+                lastGroupElements[lastGroupElement] = j;
+                ++lastGroupElement;
+            }
+
             if (!reg.states[j].type)
             {
                 reg.states[j].type = REGULAR;
@@ -214,26 +251,47 @@ re re_compile(const char *pattern)
             reg.states[j].symbols[element].type = LAST;
             reg.states[j].min = 1;
             reg.states[j].max = 1;
+
             break;
 
-            // loops
+        // loops
         case '+': // 1 .. inf
+            if (i == 0 || (i != 0 && pattern[i - 1] == '|'))
+            {
+                return 0;
+            }
+
             reg.states[j - 1].min = 1;
             reg.states[j - 1].max = 0x3f3f; // infinity
             --j;
             break;
         case '*': // 0 .. inf
+            if (i == 0 || (i != 0 && pattern[i - 1] == '|'))
+            {
+                return 0;
+            }
+
             reg.states[j - 1].min = 0;
             reg.states[j - 1].max = 0x3f3f; // infinity
             --j;
             break;
         case '?': // 0 .. 1
+            if (i == 0 || (i != 0 && pattern[i - 1] == '|'))
+            {
+                return 0;
+            }
+
             reg.states[j - 1].min = 0;
             reg.states[j - 1].max = 1;
             --j;
             break;
         case '{':
         {
+            if (i == 0 || (i != 0 && pattern[i - 1] == '|'))
+            {
+                return 0;
+            }
+
             int n = 0;
             int m;
 
@@ -277,7 +335,6 @@ re re_compile(const char *pattern)
             {
                 ++i;
             }
-            //++i;
 
             reg.states[j - 1].min = n;
             reg.states[j - 1].max = m;
@@ -285,7 +342,197 @@ re re_compile(const char *pattern)
         }
         break;
 
+        // group
+        case '(':
+            if (lastGroupInsideBracket != 0) // inside a group
+            {
+                if (!reg.states[j].type)
+                {
+                    reg.states[j].type = REGULAR;
+                }
+                reg.states[j].symbols[0].value.element = pattern[i];
+                reg.states[j].symbols[0].type = SYMBOL;
+                reg.states[j].symbols[1].type = LAST;
+                reg.states[j].min = 1;
+                reg.states[j].max = 1;
+
+                ++lastGroupInsideBracket;
+
+                lastGroupElements[lastGroupElement] = j;
+                ++lastGroupElement;
+            }
+            else // open a group
+            {
+                lastGroupElement = 0;
+                ++lastGroupInsideBracket; // open bracket
+                ++i;
+                continue;
+            }
+            break;
+        case ')':
+            if (lastGroupInsideBracket != 1) // doesn't close the group: if equals to 0 it's outside, otherwise inside
+            {
+                if (!reg.states[j].type)
+                {
+                    reg.states[j].type = REGULAR;
+                }
+                reg.states[j].symbols[0].value.element = pattern[i];
+                reg.states[j].symbols[0].type = SYMBOL;
+                reg.states[j].symbols[1].type = LAST;
+                reg.states[j].min = 1;
+                reg.states[j].max = 1;
+
+                if (lastGroupInsideBracket != 0)
+                {
+                    --lastGroupInsideBracket;
+
+                    lastGroupElements[lastGroupElement] = j;
+                    ++lastGroupElement;
+                }
+            }
+            else // close a group
+            {
+                // loop for group
+                switch (pattern[i + 1])
+                {
+                case '+': // 1 .. inf
+                    ++i;
+                    for (size_t k = 0; k < lastGroupElement; k++)
+                    {
+                        reg.states[lastGroupElements[k]].max = 0x3f3f;
+                    }
+                    break;
+                case '*': // 0 .. inf
+                    ++i;
+                    for (size_t k = 0; k < lastGroupElement; k++)
+                    {
+                        reg.states[lastGroupElements[k]].min = 0;
+                        reg.states[lastGroupElements[k]].max = 0x3f3f;
+                    }
+                    break;
+                case '?': // 0 .. 1
+                    ++i;
+                    for (size_t k = 0; k < lastGroupElement; k++)
+                    {
+                        reg.states[lastGroupElements[k]].min = 0;
+                    }
+                    break;
+                case '{':
+                {
+                    int n = 0;
+                    int m;
+
+                    ++i;
+                    ++i;
+                    while (pattern[i] == ' ')
+                    {
+                        ++i;
+                    }
+                    while (isdigit(pattern[i]))
+                    {
+                        n = n * 10 + (pattern[i] - '0');
+                        ++i;
+                    }
+                    while (pattern[i] == ' ')
+                    {
+                        ++i;
+                    }
+                    if (pattern[i] == ',')
+                    {
+                        m = 0x3f3f;
+                        ++i;
+                    }
+                    else
+                    {
+                        m = n;
+                    }
+                    while (pattern[i] == ' ')
+                    {
+                        ++i;
+                    }
+                    if (pattern[i] != '}')
+                    {
+                        m = 0;
+                        while (isdigit(pattern[i]))
+                        {
+                            m = m * 10 + (pattern[i] - '0');
+                            ++i;
+                        }
+                    }
+                    while (pattern[i] != '}')
+                    {
+                        ++i;
+                    }
+                    //++i;
+
+                    for (size_t k = 0; k < lastGroupElement; k++)
+                    {
+                        reg.states[lastGroupElements[k]].min = reg.states[lastGroupElements[k]].min == 0 ? n : n * reg.states[lastGroupElements[k]].min;
+                        reg.states[lastGroupElements[k]].max = reg.states[lastGroupElements[k]].max == 0 ? m : m * reg.states[lastGroupElements[k]].max;
+                    }
+                }
+                break;
+
+                default:
+                    break;
+                }
+
+                --lastGroupInsideBracket;
+                groupLastElements[groupLastElement] = lastGroupElements[lastGroupElement];
+                // TODO nfa
+                // group straight case
+
+                for (size_t k = 0; k < lastGroupElement; k++)
+                {
+                    lastGroupElements[k] = 0;
+                }
+                lastGroupElement = 0;
+
+                if (groupLastElement != 0 && pattern[i + 1] != '\0' && pattern[i + 1] != '|') // in case if group is the last case in variation
+                {
+                    groupLastElements[groupLastElement] = j - 1; // because '(' is on j-th
+                    ++groupLastElement;
+
+                    // TODO nfa
+                    // case when group is the last element in variation
+
+                    // TODO обнуление вариаций
+                }
+
+                ++i;
+                lastGroupElement = -1;
+                continue;
+            }
+            break;
+
+        // variation
+        case '|':
+            if (lastGroupInsideBracket == 0) // outside a group
+            {
+                if (i != 0) // both in case of element and group
+                {
+                    groupLastElements[groupLastElement] = j - 1;
+                    ++groupLastElement;
+                    ++i;
+                    --j;
+                }
+
+                if (pattern[i + 1] == '\0')
+                {
+                    printf("'|' is not allowed at the end of re!\n");
+                    return 0;
+                }
+            }
+
+            break;
+
         default:
+            if (lastGroupElement != -1)
+            {
+                lastGroupElements[lastGroupElement] = j;
+                ++lastGroupElement;
+            }
+
             if (!reg.states[j].type)
             {
                 reg.states[j].type = REGULAR;
@@ -297,6 +544,11 @@ re re_compile(const char *pattern)
             reg.states[j].max = 1;
             break;
         }
+
+        // TODO nfa
+        // non-group straight case
+        // case when group is not the last element in variation
+
         ++i;
         ++j;
     }
@@ -308,6 +560,7 @@ re re_compile(const char *pattern)
 void re_print(re *pattern)
 {
     const char *types[] = {
+        "FIRST",
         "LAST",
         "REGULAR",
         "NONE",
@@ -322,7 +575,7 @@ void re_print(re *pattern)
         "NONALPHANUMERIC" // \W
     };
 
-    int i = 0;
+    int i = 1;
     while ((*pattern)->states[i].type != LAST)
     {
         printf("%d\n\ttype: %s\n", i, types[(*pattern)->states[i].type]);
