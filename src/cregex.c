@@ -523,7 +523,7 @@ re re_compile(const char *pattern)
                     for (size_t k = 0; k < lastGroupElement; k++)
                     {
                         reg.states[lastGroupElements[k]].min *= n;
-                        reg.states[lastGroupElements[k]].max *= m;
+                        reg.states[lastGroupElements[k]].max = reg.states[lastGroupElements[k]].max == 0x3f3f ? reg.states[lastGroupElements[k]].max : reg.states[lastGroupElements[k]].max * m;
                     }
                 }
                 break;
