@@ -1,2 +1,2 @@
 # cregex
-Regular expressions and other algorithms on strings
+Regular expressions written in C.
