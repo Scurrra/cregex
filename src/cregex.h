@@ -4,6 +4,26 @@
 #include <stdbool.h>
 #include <locale.h>
 
+/*
+RULES:
+. - any symbol
+\d - numeric
+\D - nonnumeric
+\s - any space
+\S - nonspace
+\w - alphanumeric
+\W - nonalphanumeric
+
+[] - class
+() - group, nested groups are not allowed
+
++ - 1..inf
+* - 0..inf
+? - 0..1
+{n} - n
+{n,} - n..inf
+{n,m} - n..m
+*/
 typedef struct regex *re;
 
 #define MAX_PATTERN_LENGTH 100 // maximum number of states in automata

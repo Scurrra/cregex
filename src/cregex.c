@@ -68,7 +68,7 @@ typedef struct state
 typedef struct regex
 {
     state *states;
-    //int **nfa;
+    int nfa[MAX_PATTERN_LENGTH][MAX_PATTERN_LENGTH];
     //int **dfa;
 } regex;
 
@@ -83,6 +83,9 @@ re re_compile(const char *pattern)
 
     int lastGroupElements[MAX_GROUP_LENGTH], lastGroupElement = 0, lastGroupInsideBracket = 0;
     int groupLastElements[MAX_PATTERN_LENGTH], groupLastElement = 0;
+    int groupFirstElements[MAX_PATTERN_LENGTH], groupFirstElement = 0;
+    int lastOutput[MAX_PATTERN_LENGTH], lastOutputLength = 0;
+    bool isVariation = false, variationBeforeGroup = false, neighbourVariation = false;
 
     for (size_t i = 0; i < MAX_GROUP_LENGTH; i++)
     {
@@ -115,6 +118,22 @@ re re_compile(const char *pattern)
                 ++lastGroupElement;
             }
 
+            // TODO - OK
+            // first element in variation
+            if (!isVariation && pattern[i + 1] == '|')
+            {
+                isVariation = true;
+                groupFirstElements[groupFirstElement] = j;
+                ++groupFirstElement;
+            }
+            // last element in variation
+            if (isVariation && pattern[i + 1] != '|' && pattern[i - 1] == '|')
+            {
+                isVariation = false;
+                groupLastElements[groupLastElement] = j;
+                ++groupLastElement;
+            }
+
             if (!reg.states[j].type) // "^."
             {
                 reg.states[j].type = REGULAR;
@@ -134,6 +153,21 @@ re re_compile(const char *pattern)
                 {
                     lastGroupElements[lastGroupElement] = j;
                     ++lastGroupElement;
+                }
+
+                // first element in variation
+                if (!isVariation && pattern[i + 2] == '|')
+                {
+                    isVariation = true;
+                    groupFirstElements[groupFirstElement] = j;
+                    ++groupFirstElement;
+                }
+                // last element in variation
+                if (isVariation && pattern[i + 2] != '|' && pattern[i - 1] == '|')
+                {
+                    isVariation = false;
+                    groupLastElements[groupLastElement] = j;
+                    ++groupLastElement;
                 }
 
                 ++i;
@@ -173,6 +207,9 @@ re re_compile(const char *pattern)
             }
             break;
         case '[':
+        {
+            bool flag = i != 0 && pattern[i - 1] == '|' ? true : false;
+
             if (lastGroupElement != -1)
             {
                 lastGroupElements[lastGroupElement] = j;
@@ -248,12 +285,28 @@ re re_compile(const char *pattern)
                 ++element;
                 ++i;
             }
+
+            // first element in variation
+            if (!isVariation && pattern[i + 1] == '|')
+            {
+                isVariation = true;
+                groupFirstElements[groupFirstElement] = j;
+                ++groupFirstElement;
+            }
+            // last element in variation
+            if (isVariation && pattern[i + 1] != '|' && flag)
+            {
+                isVariation = false;
+                groupLastElements[groupLastElement] = j;
+                ++groupLastElement;
+            }
+
             reg.states[j].symbols[element].type = LAST;
             reg.states[j].min = 1;
             reg.states[j].max = 1;
 
             break;
-
+        }
         // loops
         case '+': // 1 .. inf
             if (i == 0 || (i != 0 && pattern[i - 1] == '|'))
@@ -363,6 +416,8 @@ re re_compile(const char *pattern)
             }
             else // open a group
             {
+                variationBeforeGroup = i != 0 && pattern[i - 1] == '|' ? true : false;
+
                 lastGroupElement = 0;
                 ++lastGroupInsideBracket; // open bracket
                 ++i;
@@ -477,26 +532,59 @@ re re_compile(const char *pattern)
                     break;
                 }
 
-                --lastGroupInsideBracket;
-                groupLastElements[groupLastElement] = lastGroupElements[lastGroupElement];
-                // TODO nfa
-                // group straight case
-
-                for (size_t k = 0; k < lastGroupElement; k++)
+                // first element in variation
+                if (!isVariation && pattern[i + 1] == '|')
                 {
-                    lastGroupElements[k] = 0;
+                    isVariation = true;
+                    groupFirstElements[groupFirstElement] = lastGroupElements[0];
+                    ++groupFirstElement;
                 }
-                lastGroupElement = 0;
-
-                if (groupLastElement != 0 && pattern[i + 1] != '\0' && pattern[i + 1] != '|') // in case if group is the last case in variation
+                // last element in variation
+                if (isVariation && pattern[i + 1] != '|' && variationBeforeGroup)
                 {
-                    groupLastElements[groupLastElement] = j - 1; // because '(' is on j-th
+                    isVariation = false;
+                    groupLastElements[groupLastElement] = lastGroupElements[lastGroupElement - 1];
                     ++groupLastElement;
+                }
 
-                    // TODO nfa
-                    // case when group is the last element in variation
+                --lastGroupInsideBracket;
 
-                    // TODO обнуление вариаций
+                // group straight case
+                for (size_t k = 1; k < lastGroupElement; k++)
+                {
+                    reg.nfa[lastGroupElements[k - 1]][lastGroupElements[k]] = 1;
+                }
+                neighbourVariation = neighbourVariation && lastGroupElement != 0;
+
+                // case, when group is the last variable in variation
+                if (groupLastElement != 0 && !isVariation)
+                {
+                    for (size_t k = 0; k < groupLastElement; k++)
+                    {
+                        reg.nfa[groupLastElements[k]][groupLastElements[groupLastElement - 1] + 1] = 1; // column
+
+                        if (!neighbourVariation)
+                        {
+                            reg.nfa[groupFirstElements[0] - 1][groupFirstElements[k]] = 1; // row
+                        }
+                        else
+                        {
+                            for (size_t l = 0; l < lastOutputLength; l++)
+                            {
+                                reg.nfa[lastOutput[l]][groupFirstElements[k]] = 1;
+                            }
+                        }
+                    }
+
+                    for (size_t k = 0; k < groupLastElement; k++)
+                    {
+                        lastOutput[k] = groupLastElements[k];
+                        neighbourVariation = true;
+                    }
+                    lastOutputLength = groupLastElement != 0 ? groupLastElement : 0;
+
+                    groupFirstElement = 0;
+                    groupLastElement = 0;
                 }
 
                 ++i;
@@ -507,13 +595,15 @@ re re_compile(const char *pattern)
 
         // variation
         case '|':
-            if (lastGroupInsideBracket == 0) // outside a group
+            if (lastGroupInsideBracket == 0) // only outside a group
             {
+                // except of the last element
                 if (i != 0) // both in case of element and group
                 {
                     groupLastElements[groupLastElement] = j - 1;
                     ++groupLastElement;
-                    ++i;
+                    groupFirstElements[groupFirstElement] = j;
+                    ++groupFirstElement;
                     --j;
                 }
 
@@ -533,6 +623,21 @@ re re_compile(const char *pattern)
                 ++lastGroupElement;
             }
 
+            // first element in variation
+            if (!isVariation && pattern[i + 1] == '|')
+            {
+                isVariation = true;
+                groupFirstElements[groupFirstElement] = j;
+                ++groupFirstElement;
+            }
+            // last element in variation
+            if (isVariation && pattern[i + 1] != '|' && pattern[i - 1] == '|')
+            {
+                isVariation = false;
+                groupLastElements[groupLastElement] = j;
+                ++groupLastElement;
+            }
+
             if (!reg.states[j].type)
             {
                 reg.states[j].type = REGULAR;
@@ -545,13 +650,56 @@ re re_compile(const char *pattern)
             break;
         }
 
-        // TODO nfa
-        // non-group straight case
-        // case when group is not the last element in variation
+        // case when group is not the last element in variation?
+        if (groupLastElement != 0 && !isVariation)
+        {
+            for (size_t k = 0; k < groupLastElement; k++)
+            {
+                reg.nfa[groupLastElements[k]][groupLastElements[groupLastElement - 1] + 1] = 1; // column
+
+                if (!neighbourVariation)
+                {
+                    reg.nfa[groupFirstElements[0] - 1][groupFirstElements[k]] = 1; // row
+                }
+                else
+                {
+                    for (size_t l = 0; l < lastOutputLength; l++)
+                    {
+                        reg.nfa[lastOutput[l]][groupFirstElements[k]] = 1;
+                    }
+                }
+            }
+
+            for (size_t k = 0; k < groupLastElement; k++)
+            {
+                lastOutput[k] = groupLastElements[k];
+                neighbourVariation = true;
+            }
+            lastOutputLength = groupLastElement != 0 ? groupLastElement : 0;
+
+            groupFirstElement = 0;
+            groupLastElement = 0;
+        }
+        else if (!isVariation && groupFirstElement == 0) // non-group straight case
+        {
+            reg.nfa[j - 1][j] = 1;
+        }
+        neighbourVariation = neighbourVariation && lastGroupElement != 0;
 
         ++i;
         ++j;
     }
+
+    // print nfa
+    // for (size_t i = 0; i < j; i++)
+    // {
+    //     for (size_t k = 0; k < j; k++)
+    //     {
+    //         printf("%d ", reg.nfa[i][k]);
+    //     }
+    //     printf("\n");
+    // }
+
     reg.states[j].type = LAST;
 
     return (re)&reg;
