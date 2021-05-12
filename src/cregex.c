@@ -69,7 +69,7 @@ typedef struct regex
 {
     state *states;
     int nfa[MAX_PATTERN_LENGTH][MAX_PATTERN_LENGTH];
-    //int **dfa;
+    int size;
 } regex;
 
 re re_compile(const char *pattern)
@@ -690,15 +690,7 @@ re re_compile(const char *pattern)
         ++j;
     }
 
-    // print nfa
-    // for (size_t i = 0; i < j; i++)
-    // {
-    //     for (size_t k = 0; k < j; k++)
-    //     {
-    //         printf("%d ", reg.nfa[i][k]);
-    //     }
-    //     printf("\n");
-    // }
+    reg.size = j - 1;
 
     reg.states[j].type = LAST;
 
@@ -707,6 +699,16 @@ re re_compile(const char *pattern)
 
 void re_print(re *pattern)
 {
+    // print nfa
+    for (size_t i = 0; i < (*pattern)->size; i++)
+    {
+        for (size_t k = 0; k < (*pattern)->size + 1; k++)
+        {
+            printf("%d ", (*pattern)->nfa[i][k]);
+        }
+        printf("\n");
+    }
+
     const char *types[] = {
         "FIRST",
         "LAST",
