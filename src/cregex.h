@@ -45,7 +45,7 @@ Check if input string fully matches the regular expression
 string - string to be checked
 pattern - compiled regular expression
 */
-bool re_match(re pattern, const char *string);
+bool re_match(re *pattern, const char *string);
 
 /*
 Check if input string fully matches the regular expression
@@ -61,7 +61,7 @@ Finds substring in string that corresponds to the regular expression
 string - string to be processed
 pattern - compiled regular expression
 */
-int re_find(re pattern, const char *string);
+int re_find(re *pattern, const char *string);
 
 /*
 Finds substring in string that corresponds to the regular expression

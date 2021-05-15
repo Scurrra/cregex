@@ -2,6 +2,9 @@
 #include <stdlib.h> // NULL
 #include <stdio.h>
 #include <ctype.h>
+#include <string.h>
+
+#define min(a, b) (a) < (b) ? a : b
 
 /*
 Represents a range on the alphabet
@@ -68,9 +71,11 @@ typedef struct state
 typedef struct regex
 {
     state *states;
-    int nfa[MAX_PATTERN_LENGTH][MAX_PATTERN_LENGTH];
+    bool nfa[MAX_PATTERN_LENGTH][MAX_PATTERN_LENGTH];
     int size;
 } regex;
+
+bool matchState(state *st, const char c);
 
 re re_compile(const char *pattern)
 {
@@ -127,7 +132,7 @@ re re_compile(const char *pattern)
                 ++groupFirstElement;
             }
             // last element in variation
-            if (isVariation && pattern[i + 1] != '|' && pattern[i - 1] == '|')
+            if (isVariation && pattern[i + 1] != '|' && pattern[i + 1] != '*' && pattern[i + 1] != '+' && pattern[i + 1] != '?' && pattern[i + 1] != '{') //  && pattern[i - 1] == '|'
             {
                 isVariation = false;
                 groupLastElements[groupLastElement] = j;
@@ -163,7 +168,7 @@ re re_compile(const char *pattern)
                     ++groupFirstElement;
                 }
                 // last element in variation
-                if (isVariation && pattern[i + 2] != '|' && pattern[i - 1] == '|')
+                if (isVariation && pattern[i + 2] != '|' && pattern[i + 2] != '*' && pattern[i + 2] != '+' && pattern[i + 2] != '?' && pattern[i + 2] != '{')
                 {
                     isVariation = false;
                     groupLastElements[groupLastElement] = j;
@@ -208,7 +213,7 @@ re re_compile(const char *pattern)
             break;
         case '[':
         {
-            bool flag = i != 0 && pattern[i - 1] == '|' ? true : false;
+            //bool flag = i != 0 && pattern[i - 1] == '|' ? true : false;
 
             if (lastGroupElement != -1)
             {
@@ -293,8 +298,8 @@ re re_compile(const char *pattern)
                 groupFirstElements[groupFirstElement] = j;
                 ++groupFirstElement;
             }
-            // last element in variation
-            if (isVariation && pattern[i + 1] != '|' && flag)
+            // last element in variation //  && flag
+            if (isVariation && pattern[i + 1] != '|' && pattern[i + 1] != '*' && pattern[i + 1] != '+' && pattern[i + 1] != '?' && pattern[i + 1] != '{')
             {
                 isVariation = false;
                 groupLastElements[groupLastElement] = j;
@@ -314,9 +319,24 @@ re re_compile(const char *pattern)
                 return 0;
             }
 
-            reg.states[j - 1].min = 1;
-            reg.states[j - 1].max = 0x3f3f; // infinity
             --j;
+            // first element in variation
+            if (!isVariation && pattern[i + 1] == '|')
+            {
+                isVariation = true;
+                groupFirstElements[groupFirstElement] = j;
+                ++groupFirstElement;
+            }
+            // last element in variation
+            if (isVariation && pattern[i + 1] != '|') //  && pattern[i - 1] == '|'
+            {
+                isVariation = false;
+                groupLastElements[groupLastElement] = j;
+                ++groupLastElement;
+            }
+
+            reg.states[j].min = 1;
+            reg.states[j].max = 0x3f3f; // infinity
             break;
         case '*': // 0 .. inf
             if (i == 0 || (i != 0 && pattern[i - 1] == '|'))
@@ -324,9 +344,24 @@ re re_compile(const char *pattern)
                 return 0;
             }
 
-            reg.states[j - 1].min = 0;
-            reg.states[j - 1].max = 0x3f3f; // infinity
             --j;
+            // first element in variation
+            if (!isVariation && pattern[i + 1] == '|')
+            {
+                isVariation = true;
+                groupFirstElements[groupFirstElement] = j;
+                ++groupFirstElement;
+            }
+            // last element in variation
+            if (isVariation && pattern[i + 1] != '|') //  && pattern[i - 1] == '|'
+            {
+                isVariation = false;
+                groupLastElements[groupLastElement] = j;
+                ++groupLastElement;
+            }
+
+            reg.states[j].min = 0;
+            reg.states[j].max = 0x3f3f; // infinity
             break;
         case '?': // 0 .. 1
             if (i == 0 || (i != 0 && pattern[i - 1] == '|'))
@@ -334,9 +369,24 @@ re re_compile(const char *pattern)
                 return 0;
             }
 
-            reg.states[j - 1].min = 0;
-            reg.states[j - 1].max = 1;
             --j;
+            // first element in variation
+            if (!isVariation && pattern[i + 1] == '|')
+            {
+                isVariation = true;
+                groupFirstElements[groupFirstElement] = j;
+                ++groupFirstElement;
+            }
+            // last element in variation
+            if (isVariation && pattern[i + 1] != '|') //  && pattern[i - 1] == '|'
+            {
+                isVariation = false;
+                groupLastElements[groupLastElement] = j;
+                ++groupLastElement;
+            }
+
+            reg.states[j].min = 0;
+            reg.states[j].max = 1;
             break;
         case '{':
         {
@@ -389,9 +439,23 @@ re re_compile(const char *pattern)
                 ++i;
             }
 
-            reg.states[j - 1].min = n;
-            reg.states[j - 1].max = m;
             --j;
+            // first element in variation
+            if (!isVariation && pattern[i + 1] == '|')
+            {
+                isVariation = true;
+                groupFirstElements[groupFirstElement] = j;
+                ++groupFirstElement;
+            }
+            // last element in variation
+            if (isVariation && pattern[i + 1] != '|') //  && pattern[i - 1] == '|'
+            {
+                isVariation = false;
+                groupLastElements[groupLastElement] = j;
+                ++groupLastElement;
+            }
+            reg.states[j].min = n;
+            reg.states[j].max = m;
         }
         break;
 
@@ -454,6 +518,7 @@ re re_compile(const char *pattern)
                     ++i;
                     for (size_t k = 0; k < lastGroupElement; k++)
                     {
+                        reg.states[lastGroupElements[k]].min = 1;
                         reg.states[lastGroupElements[k]].max = 0x3f3f;
                     }
                     break;
@@ -470,6 +535,7 @@ re re_compile(const char *pattern)
                     for (size_t k = 0; k < lastGroupElement; k++)
                     {
                         reg.states[lastGroupElements[k]].min = 0;
+                        reg.states[lastGroupElements[k]].max = 1;
                     }
                     break;
                 case '{':
@@ -554,7 +620,7 @@ re re_compile(const char *pattern)
                 {
                     reg.nfa[lastGroupElements[k - 1]][lastGroupElements[k]] = 1;
                 }
-                neighbourVariation = neighbourVariation && lastGroupElement != 0;
+                neighbourVariation = neighbourVariation && lastGroupElement != -1;
 
                 // case, when group is the last variable in variation
                 if (groupLastElement != 0 && !isVariation)
@@ -631,7 +697,7 @@ re re_compile(const char *pattern)
                 ++groupFirstElement;
             }
             // last element in variation
-            if (isVariation && pattern[i + 1] != '|' && pattern[i - 1] == '|')
+            if (isVariation && pattern[i + 1] != '|' && pattern[i + 1] != '*' && pattern[i + 1] != '+' && pattern[i + 1] != '?' && pattern[i + 1] != '{') //  && pattern[i - 1] == '|'
             {
                 isVariation = false;
                 groupLastElements[groupLastElement] = j;
@@ -684,7 +750,7 @@ re re_compile(const char *pattern)
         {
             reg.nfa[j - 1][j] = 1;
         }
-        neighbourVariation = neighbourVariation && lastGroupElement != 0;
+        neighbourVariation = neighbourVariation && lastGroupElement != -1;
 
         ++i;
         ++j;
@@ -700,7 +766,7 @@ re re_compile(const char *pattern)
 void re_print(re *pattern)
 {
     // print nfa
-    for (size_t i = 0; i < (*pattern)->size; i++)
+    for (size_t i = 0; i < (*pattern)->size + 1; i++)
     {
         for (size_t k = 0; k < (*pattern)->size + 1; k++)
         {
@@ -734,7 +800,7 @@ void re_print(re *pattern)
         while ((*pattern)->states[i].symbols[j].type != LAST)
         {
             printf("\t%d\n\t\ttype: %s\n", j, types[(*pattern)->states[i].symbols[j].type]);
-            if ((*pattern)->states[i].symbols[j].type == SYMBOL)
+            if ((*pattern)->states[i].symbols[j].type == SYMBOL || (*pattern)->states[i].symbols[j].type == DOT || (*pattern)->states[i].symbols[j].type == SPACE || (*pattern)->states[i].symbols[j].type == NONSPACE || (*pattern)->states[i].symbols[j].type == NUMERIC || (*pattern)->states[i].symbols[j].type == NONNUMERIC || (*pattern)->states[i].symbols[j].type == ALPHANUMERIC || (*pattern)->states[i].symbols[j].type == NONALPHANUMERIC)
             {
                 printf("\t\tvalue: %c\n", (*pattern)->states[i].symbols[j].value.element);
             }
@@ -750,4 +816,121 @@ void re_print(re *pattern)
         printf("\tmax: %d\n", (*pattern)->states[i].max);
         ++i;
     }
+}
+
+bool re_match(re *pattern, const char *string)
+{
+    int i = 0;            // index in string
+    int j = 0, prevj = 0; // row in nfa
+
+    bool matches = true;
+    while (matches && j < (*pattern)->size && i < strlen(string))
+    {
+        for (int k = j + 1; k < (*pattern)->size + 1; k++)
+        {
+            if ((*pattern)->nfa[j][k])
+            {
+                int s = 0;
+                // minimal number of state entries
+                if ((*pattern)->states[k].min > 0)
+                {
+                    while (s < (*pattern)->states[k].min && matchState(&(*pattern)->states[k], string[i]))
+                    {
+                        ++s;
+                        ++i;
+                    }
+                }
+                if (s < (*pattern)->states[k].min)
+                {
+                    continue;
+                }
+
+                while (s < (*pattern)->states[k].max && string[i] != '\0' && matchState(&(*pattern)->states[k], string[i])) // && i < strlen(string)
+                {
+                    ++s;
+                    ++i;
+                }
+
+                if (s != 0)
+                {
+                    prevj = j;
+                    j = k;
+                    break;
+                }
+            }
+
+            if (k == (*pattern)->size)
+            {
+                return false;
+            }
+        }
+
+        if (prevj == j)
+        {
+            return false;
+        }
+    }
+
+    return i == strlen(string);
+}
+bool re_matchp(const char *pattern, const char *string)
+{
+    re p = re_compile(pattern);
+    // re_print(&p);
+
+    return re_match(&p, string);
+}
+
+bool matchState(state *st, const char c)
+{
+    bool matches = false;
+
+    int i = 0;
+    while (!matches && st->symbols[i].type != LAST)
+    {
+
+        if (st->symbols[i].type == DOT)
+        {
+            matches = isascii(c);
+        }
+        else if (st->symbols[i].type == SYMBOL)
+        {
+            matches = c == (*st).symbols[i].value.element;
+        }
+        else if (st->symbols[i].type == RANGE)
+        {
+            matches = (*st).symbols[i].value.rng.start <= c && (*st).symbols[i].value.rng.finish >= c;
+        }
+        else
+        {
+            switch ((*st).symbols[i].type)
+            {
+            case NUMERIC:
+                matches = isdigit(c);
+                break;
+            case NONNUMERIC:
+                matches = !isdigit(c);
+                break;
+            case SPACE:
+                matches = isspace(c);
+                break;
+            case NONSPACE:
+                matches = !isspace(c);
+                break;
+            case ALPHANUMERIC:
+                matches = isalnum(c);
+                break;
+            case NONALPHANUMERIC:
+                matches = !isalnum(c);
+                break;
+
+            default:
+                break;
+            }
+        }
+
+        ++i;
+    }
+
+    return ((*st).type == REGULAR) == matches;
 }
