@@ -123,16 +123,16 @@ re re_compile(const char *pattern)
                 ++lastGroupElement;
             }
 
-            // TODO - OK
+            // added && lastGroupElement == -1
             // first element in variation
-            if (!isVariation && pattern[i + 1] == '|')
+            if (!isVariation && lastGroupElement == -1 && pattern[i + 1] == '|')
             {
                 isVariation = true;
                 groupFirstElements[groupFirstElement] = j;
                 ++groupFirstElement;
             }
             // last element in variation
-            if (isVariation && pattern[i + 1] != '|' && pattern[i + 1] != '*' && pattern[i + 1] != '+' && pattern[i + 1] != '?' && pattern[i + 1] != '{') //  && pattern[i - 1] == '|'
+            if (isVariation && lastGroupElement == -1 && pattern[i + 1] != '|' && pattern[i + 1] != '*' && pattern[i + 1] != '+' && pattern[i + 1] != '?' && pattern[i + 1] != '{') //  && pattern[i - 1] == '|'
             {
                 isVariation = false;
                 groupLastElements[groupLastElement] = j;
@@ -160,15 +160,16 @@ re re_compile(const char *pattern)
                     ++lastGroupElement;
                 }
 
+                // added && lastGroupElement == -1
                 // first element in variation
-                if (!isVariation && pattern[i + 2] == '|')
+                if (!isVariation && lastGroupElement == -1 && pattern[i + 2] == '|')
                 {
                     isVariation = true;
                     groupFirstElements[groupFirstElement] = j;
                     ++groupFirstElement;
                 }
                 // last element in variation
-                if (isVariation && pattern[i + 2] != '|' && pattern[i + 2] != '*' && pattern[i + 2] != '+' && pattern[i + 2] != '?' && pattern[i + 2] != '{')
+                if (isVariation && lastGroupElement == -1 && pattern[i + 2] != '|' && pattern[i + 2] != '*' && pattern[i + 2] != '+' && pattern[i + 2] != '?' && pattern[i + 2] != '{')
                 {
                     isVariation = false;
                     groupLastElements[groupLastElement] = j;
@@ -291,15 +292,16 @@ re re_compile(const char *pattern)
                 ++i;
             }
 
+            // added && lastGroupElement == -1
             // first element in variation
-            if (!isVariation && pattern[i + 1] == '|')
+            if (!isVariation && lastGroupElement == -1 && pattern[i + 1] == '|')
             {
                 isVariation = true;
                 groupFirstElements[groupFirstElement] = j;
                 ++groupFirstElement;
             }
             // last element in variation //  && flag
-            if (isVariation && pattern[i + 1] != '|' && pattern[i + 1] != '*' && pattern[i + 1] != '+' && pattern[i + 1] != '?' && pattern[i + 1] != '{')
+            if (isVariation && lastGroupElement == -1 && pattern[i + 1] != '|' && pattern[i + 1] != '*' && pattern[i + 1] != '+' && pattern[i + 1] != '?' && pattern[i + 1] != '{')
             {
                 isVariation = false;
                 groupLastElements[groupLastElement] = j;
@@ -320,15 +322,16 @@ re re_compile(const char *pattern)
             }
 
             --j;
+            // added && lastGroupElement == -1
             // first element in variation
-            if (!isVariation && pattern[i + 1] == '|')
+            if (!isVariation && lastGroupElement == -1 && pattern[i + 1] == '|')
             {
                 isVariation = true;
                 groupFirstElements[groupFirstElement] = j;
                 ++groupFirstElement;
             }
             // last element in variation
-            if (isVariation && pattern[i + 1] != '|') //  && pattern[i - 1] == '|'
+            if (isVariation && lastGroupElement == -1 && pattern[i + 1] != '|') //  && pattern[i - 1] == '|'
             {
                 isVariation = false;
                 groupLastElements[groupLastElement] = j;
@@ -345,15 +348,16 @@ re re_compile(const char *pattern)
             }
 
             --j;
+            // added && lastGroupElement == -1
             // first element in variation
-            if (!isVariation && pattern[i + 1] == '|')
+            if (!isVariation && lastGroupElement == -1 && pattern[i + 1] == '|')
             {
                 isVariation = true;
                 groupFirstElements[groupFirstElement] = j;
                 ++groupFirstElement;
             }
             // last element in variation
-            if (isVariation && pattern[i + 1] != '|') //  && pattern[i - 1] == '|'
+            if (isVariation && lastGroupElement == -1 && pattern[i + 1] != '|') //  && pattern[i - 1] == '|'
             {
                 isVariation = false;
                 groupLastElements[groupLastElement] = j;
@@ -370,15 +374,16 @@ re re_compile(const char *pattern)
             }
 
             --j;
+            // added && lastGroupElement == -1
             // first element in variation
-            if (!isVariation && pattern[i + 1] == '|')
+            if (!isVariation && lastGroupElement == -1 && pattern[i + 1] == '|')
             {
                 isVariation = true;
                 groupFirstElements[groupFirstElement] = j;
                 ++groupFirstElement;
             }
             // last element in variation
-            if (isVariation && pattern[i + 1] != '|') //  && pattern[i - 1] == '|'
+            if (isVariation && lastGroupElement == -1 && pattern[i + 1] != '|') //  && pattern[i - 1] == '|'
             {
                 isVariation = false;
                 groupLastElements[groupLastElement] = j;
@@ -440,15 +445,16 @@ re re_compile(const char *pattern)
             }
 
             --j;
+            // added && lastGroupElement == -1
             // first element in variation
-            if (!isVariation && pattern[i + 1] == '|')
+            if (!isVariation && lastGroupElement == -1 && pattern[i + 1] == '|')
             {
                 isVariation = true;
                 groupFirstElements[groupFirstElement] = j;
                 ++groupFirstElement;
             }
             // last element in variation
-            if (isVariation && pattern[i + 1] != '|') //  && pattern[i - 1] == '|'
+            if (isVariation && lastGroupElement == -1 && pattern[i + 1] != '|') //  && pattern[i - 1] == '|'
             {
                 isVariation = false;
                 groupLastElements[groupLastElement] = j;
@@ -689,15 +695,16 @@ re re_compile(const char *pattern)
                 ++lastGroupElement;
             }
 
+            // added && lastGroupElement == -1
             // first element in variation
-            if (!isVariation && pattern[i + 1] == '|')
+            if (!isVariation && lastGroupElement == -1 && pattern[i + 1] == '|')
             {
                 isVariation = true;
                 groupFirstElements[groupFirstElement] = j;
                 ++groupFirstElement;
             }
             // last element in variation
-            if (isVariation && pattern[i + 1] != '|' && pattern[i + 1] != '*' && pattern[i + 1] != '+' && pattern[i + 1] != '?' && pattern[i + 1] != '{') //  && pattern[i - 1] == '|'
+            if (isVariation && lastGroupElement == -1 && pattern[i + 1] != '|' && pattern[i + 1] != '*' && pattern[i + 1] != '+' && pattern[i + 1] != '?' && pattern[i + 1] != '{') //  && pattern[i - 1] == '|'
             {
                 isVariation = false;
                 groupLastElements[groupLastElement] = j;
@@ -768,6 +775,7 @@ void re_print(re *pattern)
     // print nfa
     for (size_t i = 0; i < (*pattern)->size + 1; i++)
     {
+        printf("%ld:\t", i);
         for (size_t k = 0; k < (*pattern)->size + 1; k++)
         {
             printf("%d ", (*pattern)->nfa[i][k]);
@@ -799,7 +807,7 @@ void re_print(re *pattern)
         int j = 0;
         while ((*pattern)->states[i].symbols[j].type != LAST)
         {
-            printf("\t%d\n\t\ttype: %s\n", j, types[(*pattern)->states[i].symbols[j].type]);
+            printf("\ti: %d\n\t\ttype: %s\n", j, types[(*pattern)->states[i].symbols[j].type]);
             if ((*pattern)->states[i].symbols[j].type == SYMBOL || (*pattern)->states[i].symbols[j].type == DOT || (*pattern)->states[i].symbols[j].type == SPACE || (*pattern)->states[i].symbols[j].type == NONSPACE || (*pattern)->states[i].symbols[j].type == NUMERIC || (*pattern)->states[i].symbols[j].type == NONNUMERIC || (*pattern)->states[i].symbols[j].type == ALPHANUMERIC || (*pattern)->states[i].symbols[j].type == NONALPHANUMERIC)
             {
                 printf("\t\tvalue: %c\n", (*pattern)->states[i].symbols[j].value.element);
@@ -879,6 +887,15 @@ bool re_matchp(const char *pattern, const char *string)
     // re_print(&p);
 
     return re_match(&p, string);
+}
+
+int re_find(re *pattern, const char *string)
+{
+}
+int re_findp(const char *pattern, const char *string)
+{
+    re p = re_compile(pattern);
+    return re_find(&p, string);
 }
 
 bool matchState(state *st, const char c)
