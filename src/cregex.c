@@ -86,7 +86,7 @@ re re_compile(const char *pattern)
     unsigned int i = 0; // index in pattern
     unsigned int j = 1; // index in reg
 
-    int lastGroupElements[MAX_GROUP_LENGTH], lastGroupElement = 0, lastGroupInsideBracket = 0;
+    int lastGroupElements[MAX_GROUP_LENGTH], lastGroupElement = -1, lastGroupInsideBracket = 0;
     int groupLastElements[MAX_PATTERN_LENGTH], groupLastElement = 0;
     int groupFirstElements[MAX_PATTERN_LENGTH], groupFirstElement = 0;
     int lastOutput[MAX_PATTERN_LENGTH], lastOutputLength = 0;
@@ -757,7 +757,7 @@ re re_compile(const char *pattern)
         {
             reg.nfa[j - 1][j] = 1;
         }
-        neighbourVariation = neighbourVariation && lastGroupElement != -1;
+        // neighbourVariation = neighbourVariation && lastGroupElement != -1;
 
         ++i;
         ++j;
@@ -882,12 +882,20 @@ bool re_match(re *pattern, const char *string)
         }
     }
 
-    return i == strlen(string) && j == (*pattern)->size;
+    // compute sum on j`th row
+    // if it equals to 0, than it is the last element in regular expression
+    int outcome = 0;
+    for (size_t k = 0; k < (*pattern)->size + 1; k++)
+    {
+        outcome += (*pattern)->nfa[j][k];
+    }
+
+    return i == strlen(string) && outcome == 0;
 }
 bool re_matchp(const char *pattern, const char *string)
 {
     re p = re_compile(pattern);
-    // re_print(&p);
+    re_print(&p);
 
     return re_match(&p, string);
 }
