@@ -773,6 +773,7 @@ re re_compile(const char *pattern)
 void re_print(re *pattern)
 {
     // print nfa
+    printf("\tNFA:\n");
     for (size_t i = 0; i < (*pattern)->size + 1; i++)
     {
         printf("%ld:\t", i);
@@ -800,9 +801,11 @@ void re_print(re *pattern)
     };
 
     int i = 1;
+    printf("\n\tStates:\n");
     while ((*pattern)->states[i].type != LAST)
     {
         printf("%d\n\ttype: %s\n", i, types[(*pattern)->states[i].type]);
+        printf("\tElements in class:\n");
 
         int j = 0;
         while ((*pattern)->states[i].symbols[j].type != LAST)
@@ -879,7 +882,7 @@ bool re_match(re *pattern, const char *string)
         }
     }
 
-    return i == strlen(string);
+    return i == strlen(string) && j == (*pattern)->size;
 }
 bool re_matchp(const char *pattern, const char *string)
 {
