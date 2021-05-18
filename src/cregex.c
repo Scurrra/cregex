@@ -979,7 +979,7 @@ int re_find(re *pattern, const char *string)
 int re_findp(const char *pattern, const char *string)
 {
     re p = re_compile(pattern);
-    re_print(&p);
+    // re_print(&p);
 
     return re_find(&p, string);
 }
