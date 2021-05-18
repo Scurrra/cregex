@@ -895,17 +895,92 @@ bool re_match(re *pattern, const char *string)
 bool re_matchp(const char *pattern, const char *string)
 {
     re p = re_compile(pattern);
-    re_print(&p);
+    // re_print(&p);
 
     return re_match(&p, string);
 }
 
 int re_find(re *pattern, const char *string)
 {
+    for (size_t st = 0; st < strlen(string); st++)
+    {
+        int i = 0;            // index in string
+        int j = 0, prevj = 0; // row in nfa
+
+        bool matches = true;
+        while (matches && j < (*pattern)->size && i + st < strlen(string))
+        {
+            for (int k = j + 1; k < (*pattern)->size + 1; k++)
+            {
+                if ((*pattern)->nfa[j][k])
+                {
+                    int s = 0;
+                    // minimal number of state entries
+                    if ((*pattern)->states[k].min > 0)
+                    {
+                        while (s < (*pattern)->states[k].min && matchState(&(*pattern)->states[k], string[st + i]))
+                        {
+                            ++s;
+                            ++i;
+                        }
+                    }
+                    if (s < (*pattern)->states[k].min)
+                    {
+                        if (k == (*pattern)->size)
+                        {
+                            matches = false;
+                        }
+                        continue;
+                    }
+
+                    while (s < (*pattern)->states[k].max && string[st + i] != '\0' && matchState(&(*pattern)->states[k], string[st + i])) // && i < strlen(string)
+                    {
+                        ++s;
+                        ++i;
+                    }
+
+                    if (s != 0)
+                    {
+                        prevj = j;
+                        j = k;
+                        break;
+                    }
+                }
+
+                if (k == (*pattern)->size)
+                {
+                    matches = false;
+                }
+            }
+
+            // hmmm, it`s useless
+            if (prevj == j || !matches)
+            {
+                matches = false;
+            }
+        }
+
+        // compute sum on j`th row
+        // if it equals to 0, than it is the last element in regular expression
+        int outcome = 0;
+        for (size_t k = 0; k < (*pattern)->size + 1; k++)
+        {
+            outcome += (*pattern)->nfa[j][k];
+        }
+
+        if (outcome == 0)
+        {
+            return st;
+        }
+    }
+
+    return -1;
 }
 int re_findp(const char *pattern, const char *string)
 {
     re p = re_compile(pattern);
+    re_print(&p);
+
     return re_find(&p, string);
 }
 
