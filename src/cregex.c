@@ -756,6 +756,8 @@ re re_compile(const char *pattern)
         else if (!isVariation && groupFirstElement == 0) // non-group straight case
         {
             reg.nfa[j - 1][j] = 1;
+            // lastOutputLength = 0;
+            neighbourVariation = false;
         }
         // neighbourVariation = neighbourVariation && lastGroupElement != -1;
 
@@ -766,6 +768,16 @@ re re_compile(const char *pattern)
     reg.size = j - 1;
 
     reg.states[j].type = LAST;
+
+    // for (size_t i1 = 0; i1 < j; i1++)
+    // {
+    //     for (size_t i2 = 0; i2 < j; i2++)
+    //     {
+    //         printf("%d ", reg.nfa[i1][i2]);
+    //     }
+    //     printf("\n");
+    // }
+    // printf("\n");
 
     return (re)&reg;
 }
@@ -895,6 +907,7 @@ bool re_match(re *pattern, const char *string)
 bool re_matchp(const char *pattern, const char *string)
 {
     re p = re_compile(pattern);
+    // printf("\tPattern: %s", pattern);
     // re_print(&p);
 
     return re_match(&p, string);
