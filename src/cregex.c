@@ -948,17 +948,8 @@ int re_find(re *pattern, const char *string)
                         ++i;
                     }
 
-                    if (s != 0)
-                    {
-                        prevj = j;
-                        j = k;
-                        break;
-                    }
-                }
-
-                if (k == (*pattern)->size)
-                {
-                    matches = false;
+                    prevj = j;
+                    j = k;
                 }
             }
 
