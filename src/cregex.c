@@ -874,18 +874,14 @@ bool re_match(re *pattern, const char *string)
                     ++i;
                 }
 
-                if (s != 0)
-                {
-                    prevj = j;
-                    j = k;
-                    break;
-                }
+                prevj = j;
+                j = k;
             }
 
-            if (k == (*pattern)->size)
-            {
-                return false;
-            }
+            // if (k == (*pattern)->size)
+            // {
+            //     return false;
+            // }
         }
 
         if (prevj == j)
