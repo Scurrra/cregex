@@ -40,7 +40,7 @@ re re_compile(const char *pattern);
 void re_print(re *pattern);
 
 /*
-Check if input string fully matches the regular expression
+Checks if input string fully matches the regular expression
 
 string - string to be checked
 pattern - compiled regular expression
@@ -48,7 +48,7 @@ pattern - compiled regular expression
 bool re_match(re *pattern, const char *string);
 
 /*
-Check if input string fully matches the regular expression
+Checks if input string fully matches the regular expression
 
 string - string to be checked
 pattern - the regular expression, that corresponds to defined rules
