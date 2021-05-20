@@ -935,10 +935,8 @@ int re_find(re *pattern, const char *string)
                     }
                     if (s < (*pattern)->states[k].min)
                     {
-                        if (k == (*pattern)->size)
-                        {
-                            matches = false;
-                        }
+                        matches = false;
+
                         continue;
                     }
 
