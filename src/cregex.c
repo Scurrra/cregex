@@ -851,9 +851,11 @@ bool re_match(re *pattern, const char *string)
     {
         for (int k = j + 1; k < (*pattern)->size + 1; k++)
         {
+
+            int s = 0;
             if ((*pattern)->nfa[j][k])
             {
-                int s = 0;
+                // printf("i: %d, j: %d, k: %d\n", i, j, k);
                 // minimal number of state entries
                 if ((*pattern)->states[k].min > 0)
                 {
@@ -865,6 +867,10 @@ bool re_match(re *pattern, const char *string)
                 }
                 if (s < (*pattern)->states[k].min)
                 {
+                    if (s == 0 && k == (*pattern)->size)
+                    {
+                        return false;
+                    }
                     continue;
                 }
 
@@ -874,14 +880,15 @@ bool re_match(re *pattern, const char *string)
                     ++i;
                 }
 
-                prevj = j;
-                j = k;
-            }
+                if (s >= (*pattern)->states[k].min)
+                {
+                    prevj = j;
+                    j = k;
+                    break;
+                }
 
-            // if (k == (*pattern)->size)
-            // {
-            //     return false;
-            // }
+                // printf("\t%d - %d\n", k, (*pattern)->size);
+            }
         }
 
         if (prevj == j)
